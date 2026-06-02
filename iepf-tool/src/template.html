@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<!--
+  IEPF & Unclaimed Dividend Analyzer
+  Made by harshv31 — https://github.com/harshv31
+  Offline, single-file tool. MIT licensed. Bundles Mozilla PDF.js (Apache-2.0).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IEPF / Unclaimed Dividend Analyzer</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1a1d21; --muted:#6b7280;
+    --line:#e6e8eb; --accent:#2f6df6; --accent-soft:#eaf1ff;
+    --pos:#0d8a4f; --warn:#b45309; --danger:#c0392b;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);
+    --radius:14px; --radius-sm:10px;
+  }
+  html[data-theme="dark"]{
+    --bg:#0e1116; --panel:#161a22; --ink:#e7eaee; --muted:#9aa3b0;
+    --line:#262c37; --accent:#5b8cff; --accent-soft:#1a2336;
+    --pos:#34d399; --warn:#fbbf24; --danger:#f87171;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:28px 22px 80px;}
+  header.app{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px;}
+  .brand{display:flex; align-items:center; gap:13px;}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#7aa2ff);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;box-shadow:var(--shadow);}
+  .brand h1{font-size:18px;margin:0;font-weight:650;letter-spacing:-.2px;}
+  .brand p{margin:1px 0 0;color:var(--muted);font-size:12.5px;}
+  .iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);width:38px;height:38px;
+    border-radius:10px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .iconbtn:hover{border-color:var(--accent)}
+
+  .drop{
+    border:1.6px dashed var(--line); border-radius:var(--radius); background:var(--panel);
+    padding:34px 22px; text-align:center; cursor:pointer; transition:.15s; box-shadow:var(--shadow);
+  }
+  .drop:hover,.drop.over{border-color:var(--accent); background:var(--accent-soft);}
+  .drop .big{font-size:15px;font-weight:600;margin-bottom:4px;}
+  .drop .sub{color:var(--muted);font-size:12.5px;}
+  .drop .pdfico{font-size:30px;margin-bottom:8px;display:block;}
+
+  .files{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+  .file{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:10px 14px;box-shadow:var(--shadow);}
+  .file .nm{font-weight:560;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file .meta{color:var(--muted);font-size:12px;white-space:nowrap;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap;}
+  .b-ok{background:rgba(13,138,79,.12);color:var(--pos);}
+  .b-busy{background:var(--accent-soft);color:var(--accent);}
+  .b-warn{background:rgba(180,83,9,.13);color:var(--warn);}
+  .b-err{background:rgba(192,57,43,.12);color:var(--danger);}
+  .file .x{cursor:pointer;color:var(--muted);font-size:16px;border:none;background:none;}
+  .file .x:hover{color:var(--danger);}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 6px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow);}
+  .card .lbl{color:var(--muted);font-size:12px;font-weight:560;}
+  .card .val{font-size:21px;font-weight:700;margin-top:5px;letter-spacing:-.4px;}
+  .card .val.small{font-size:15px;font-weight:620;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0 12px;}
+  .toolbar input[type=text],.toolbar input[type=number],.toolbar select{
+    border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:9px;padding:8px 11px;font-size:13px;outline:none;}
+  .toolbar input:focus,.toolbar select:focus{border-color:var(--accent);}
+  .search{flex:1;min-width:180px;}
+  .chk{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:13px;user-select:none;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel);padding:7px 11px;border-radius:9px;}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;
+    padding:8px 13px;font-size:13px;font-weight:560;cursor:pointer;display:inline-flex;gap:6px;align-items:center;}
+  .btn:hover{border-color:var(--accent);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{filter:brightness(1.05);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .spacer{flex:1;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{position:sticky;top:0;background:var(--panel);text-align:left;padding:11px 14px;font-weight:620;
+    color:var(--muted);border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;font-size:12px;}
+  thead th.num{text-align:right;}
+  thead th .arrow{font-size:10px;opacity:.7;margin-left:3px;}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr:hover{background:var(--accent-soft);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;}
+  td.rank{color:var(--muted);width:48px;font-variant-numeric:tabular-nums;}
+  .top1 td.rank{color:#d4a017;font-weight:800;}
+  .nm-cell{font-weight:560;}
+  .sub-cell{color:var(--muted);font-size:11.5px;}
+  .empty{padding:50px 20px;text-align:center;color:var(--muted);}
+  .empty .big{font-size:34px;margin-bottom:8px;}
+
+  details.mapping{margin-top:14px;}
+  details.mapping summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0;user-select:none;}
+  .maprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;box-shadow:var(--shadow);}
+  .maprow .fnm{font-weight:560;flex-basis:100%;margin-bottom:2px;font-size:12.5px;}
+  .maprow label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px;}
+  .maprow select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 8px;font-size:12.5px;max-width:240px;}
+
+  footer{color:var(--muted);font-size:11.5px;text-align:center;margin-top:30px;}
+  .hint{color:var(--muted);font-size:12px;margin:4px 2px 0;}
+  .countline{color:var(--muted);font-size:12.5px;margin:0 2px 8px;}
+  @media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="brand">
+      <div class="logo">₹</div>
+      <div>
+        <h1>IEPF &amp; Unclaimed Dividend Analyzer</h1>
+        <p>Offline · find the highest-value holders across filings</p>
+      </div>
+    </div>
+    <button class="iconbtn" id="themeBtn" title="Toggle dark mode">◐</button>
+  </header>
+
+  <div class="drop" id="drop">
+    <span class="pdfico">📄</span>
+    <div class="big">Drop IEPF / unclaimed-dividend PDFs here</div>
+    <div class="sub">or click to browse · multiple files supported · nothing leaves your computer</div>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+  </div>
+
+  <div class="files" id="fileList"></div>
+
+  <section id="results" style="display:none;">
+    <div class="cards" id="cards"></div>
+
+    <div class="toolbar">
+      <input type="text" class="search" id="search" placeholder="🔍  Search holder name or folio…">
+      <input type="number" id="minAmt" placeholder="Min ₹" style="width:110px;">
+      <select id="topN">
+        <option value="0">All rows</option>
+        <option value="10">Top 10</option>
+        <option value="25">Top 25</option>
+        <option value="50">Top 50</option>
+        <option value="100">Top 100</option>
+        <option value="500">Top 500</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="aggToggle" checked> Combine duplicate names</label>
+      <div class="spacer"></div>
+      <button class="btn" id="copyBtn" title="Copy table to clipboard">⧉ Copy</button>
+      <button class="btn" id="csvBtn">⬇ CSV</button>
+      <button class="btn primary" id="xlsBtn">⬇ Excel</button>
+    </div>
+
+    <div class="countline" id="countline"></div>
+
+    <div class="panel">
+      <table id="tbl">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;">
+        <div class="big">🗂️</div>
+        <div>No matching rows. Adjust your filters or check the column mapping below.</div>
+      </div>
+    </div>
+
+    <details class="mapping" id="mappingWrap">
+      <summary>⚙️ Column mapping — fix detection if a column looks wrong</summary>
+      <div class="hint">If amounts or names look off for a file, pick the correct columns below. Detection is automatic but PDF layouts vary.</div>
+      <div id="mapRows" style="margin-top:8px;"></div>
+    </details>
+  </section>
+
+  <footer>
+    Runs entirely in your browser · no internet · no upload · v1.1 ·
+    built with Mozilla pdf.js<br>
+    Made by <a href="https://github.com/harshv31" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-weight:600;">harshv31</a>
+    · github.com/harshv31
+  </footer>
+</div>
+
+<!-- bundled libraries (base64, injected at build) -->
+<script id="pdfjsMain" type="application/base64">__PDFJS_MAIN_B64__</script>
+<script id="pdfjsWorker" type="application/base64">__PDFJS_WORKER_B64__</script>
+
+<script>
+/* IEPF & Unclaimed Dividend Analyzer — made by harshv31 · https://github.com/harshv31 */
+try{ console.log('%cIEPF & Unclaimed Dividend Analyzer%c\nMade by harshv31 · https://github.com/harshv31','font-weight:bold;font-size:13px','color:#888'); }catch(e){}
+
+/* ---------- theme ---------- */
+(function(){
+  const saved = localStorage.getItem('iepf-theme');
+  if(saved) document.documentElement.setAttribute('data-theme',saved);
+  document.getElementById('themeBtn').onclick=()=>{
+    const cur=document.documentElement.getAttribute('data-theme')==='dark'?'':'dark';
+    if(cur) document.documentElement.setAttribute('data-theme',cur);
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('iepf-theme',cur);
+  };
+})();
+
+/* ---------- bootstrap pdf.js from embedded base64 ---------- */
+function b64ToBlobUrl(b64,type){
+  const bin=atob(b64); const len=bin.length; const bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes],{type}));
+}
+(function loadPdfJs(){
+  const mainB64=document.getElementById('pdfjsMain').textContent.trim();
+  const workerB64=document.getElementById('pdfjsWorker').textContent.trim();
+  const s=document.createElement('script');
+  s.src=b64ToBlobUrl(mainB64,'text/javascript');
+  s.onload=()=>{
+    pdfjsLib.GlobalWorkerOptions.workerSrc=b64ToBlobUrl(workerB64,'text/javascript');
+    window.__pdfReady=true;
+  };
+  s.onerror=()=>alert('Failed to initialise PDF engine.');
+  document.head.appendChild(s);
+})();
+
+/* ============================================================
+   STATE
+============================================================ */
+const state={ files:[], sortKey:'amount', sortDir:'desc', userSorted:false,
+  aggregate:true, search:'', minAmt:0, topN:0, fileSeq:0 };
+
+/* ============================================================
+   PDF PARSING + TABLE RECONSTRUCTION
+============================================================ */
+const HEADER_KW={
+  name:/\b(name|holder|shareholder|investor|payee)\b/i,
+  amount:/\bamount\b|\bamt\b|unpaid|unclaimed|\bvalue\b|\bsum\b|\bnet\b|dividend/i,
+  folio:/folio|client\s*id|clientid|dpid|demat|\bdp\b|account\s*no/i,
+  date:/\bdate\b|proposed|transfer/i,
+  addr:/address|city|state|\bpin\b|pincode|country|district/i,
+  shares:/shares|nominal|\bqty\b/i
+};
+
+// parse a single numeric value (handles ₹, commas, stray dots)
+function parseNum(s){
+  if(s==null) return null;
+  let t=String(s).replace(/[^0-9.\-]/g,'');
+  if(t==='' || t==='.' || t==='-') return null;
+  const firstDot=t.indexOf('.');
+  if(firstDot!==-1) t=t.slice(0,firstDot+1)+t.slice(firstDot+1).replace(/\./g,'');
+  const n=parseFloat(t);
+  return isNaN(n)?null:n;
+}
+// does the string contain a value with paise (decimals)? — the strongest "this is money" signal
+function hasDec(s){ return /\d[\d,]*\.\d{1,2}(?!\d)/.test(String(s||'')); }
+// looks like a date token (12-SEP-2018, 19NOV2017, 31/03/2021)
+function isDate(s){
+  s=String(s||'');
+  return /\b\d{1,2}[-\/. ]?[A-Za-z]{3}[-\/. ]?\d{2,4}\b/.test(s)
+      || /\b\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}\b/.test(s)
+      || /\d{2}[A-Z]{3}\d{4}/.test(s);
+}
+// extract the amount from a cell that may hold several tokens — prefer a decimal token,
+// never concatenate digits across tokens (that produced absurd billion-rupee values)
+function parseAmt(cell){
+  const toks=String(cell||'').split(/\s+/).filter(Boolean);
+  let best=null;
+  for(const t of toks){ if(/^[₹rs]*[\d,]+\.\d{1,3}$/i.test(t)){ const n=parseNum(t); if(n!=null&&n>0) best=n; } }
+  if(best!=null) return best;
+  for(let i=toks.length-1;i>=0;i--){ if(/^[\d,]+$/.test(toks[i])){ const n=parseNum(toks[i]); if(n!=null&&n>0) return n; } }
+  return null;
+}
+// strip a leading serial number ("138 ANU SEHGAL" -> "ANU SEHGAL"), trailing "NA" placeholders
+// (father/nominee column bleeding in on MCA e-forms), and tidy whitespace
+function cleanName(s){ return String(s||'').replace(/^\s*\d+[\s.\-:)]+/,'').replace(/\s+/g,' ').trim().replace(/(\s+NA\b)+$/i,'').trim(); }
+// total / carry-forward rows that must never count as holders
+function isTotalRow(n){ return /\b(total|cumm|c\/f|b\/f|carried\s*forward|brought\s*forward)\b/i.test(String(n||'')); }
+// integer count (number of shares) from a cell
+function parseShares(s){ const m=String(s==null?'':s).replace(/,/g,'').match(/\d{1,}/); if(!m) return null; const n=parseInt(m[0],10); return (isNaN(n)||n<=0)?null:n; }
+// an Indian PIN code (6 digits, leading 1-8) found inside a string
+function findPin(s){ const m=String(s||'').match(/(?:^|\D)([1-8]\d{5})(?:\D|$)/); return m?m[1]:''; }
+
+// Parse one whole-line string from a fixed-width / dot-matrix report
+// e.g. "1 02009242 1 ASHOK CHANDRA SRIVASTAVA 70 1750.00 1" -> name/folio/shares/amount.
+// Used when the PDF has no column geometry (each row is a single text run).
+function lineParse(text){
+  const toks=String(text||'').trim().split(/\s+/);
+  if(toks.length<3) return null;
+  let amount=null, amtIdx=-1;
+  for(let i=toks.length-1;i>=0;i--){ if(/^[\d,]+\.\d{1,2}$/.test(toks[i])){ amount=parseNum(toks[i]); amtIdx=i; break; } }
+  const runs=[]; let cur=[];                               // longest run of alphabetic tokens = the name
+  for(let i=0;i<toks.length;i++){ const t=toks[i]; const alpha=/[A-Za-z]/.test(t)&&!/\d/.test(t); if(alpha)cur.push({t,i}); else { if(cur.length)runs.push(cur); cur=[]; } }
+  if(cur.length)runs.push(cur);
+  runs.sort((a,b)=>b.length-a.length);
+  const nameRun=runs[0]||null;
+  const name=nameRun?nameRun.map(x=>x.t).join(' '):'';
+  const nameEnd=nameRun?nameRun[nameRun.length-1].i:-1;
+  const nameStart=nameRun?nameRun[0].i:0;
+  // shares: integer token sitting between the name and the amount (e.g. "...SRIVASTAVA 70 1750.00")
+  let shares=null, sharesIdx=-1;
+  const hi=(amtIdx>=0?amtIdx:toks.length)-1;
+  for(let i=hi;i>nameEnd;i--){ if(/^\d[\d,]*$/.test(toks[i]) && !/\./.test(toks[i])){ shares=parseShares(toks[i]); sharesIdx=i; break; } }
+  if(amount==null && shares==null) return null;            // neither money nor shares -> not a record
+  // folio: an alphanumeric-with-digit token before the name
+  let folio='';
+  for(let i=nameStart-1;i>=0;i--){ if(/^[A-Za-z0-9\/\-]{4,}$/.test(toks[i])&&/\d/.test(toks[i])){ folio=toks[i]; break; } }
+  // pincode: a standalone 6-digit token (not the amount/shares value)
+  let pincode='';
+  for(let i=0;i<toks.length;i++){ if(i===amtIdx||i===sharesIdx) continue; if(/^[1-8]\d{5}$/.test(toks[i])){ pincode=toks[i]; break; } }
+  return {name:cleanName(name), amount, shares, folio, pincode};
+}
+
+async function parsePdf(arrayBuffer, onPage){
+  const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  let allItems=[]; let emptyPages=0;
+  for(let p=1;p<=pdf.numPages;p++){
+    if(onPage && (p===1 || p%20===0 || p===pdf.numPages)){ onPage(p, pdf.numPages); await new Promise(r=>setTimeout(r)); }
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent();
+    if(!content.items.length){emptyPages++;continue;}
+    let pageItems=[];
+    for(const it of content.items){
+      if(!it.str || !it.str.trim()) continue;
+      const tr=it.transform;
+      const h=it.height||Math.abs(tr[3])||9;
+      pageItems.push({str:it.str, x:tr[4], y:tr[5], w:it.width||(it.str.length*h*0.5), h, page:p});
+    }
+    if(!pageItems.length){emptyPages++;continue;}
+    allItems.push({page:p, items:pageItems});
+  }
+  return {numPages:pdf.numPages, emptyPages, pages:allItems};
+}
+
+/* group a page's RAW items into visual rows by y (no cross-column merging —
+   that is what previously glued the serial-no into the name and the amount into the date) */
+function groupRows(items){
+  const sorted=items.slice().sort((a,b)=> b.y-a.y || a.x-b.x);
+  const rows=[]; let cur=null; let curY=null;
+  for(const it of sorted){
+    const tol=Math.max(2.5, (it.h||7)*0.5);
+    if(cur && Math.abs(it.y-curY)<=tol){ cur.push(it); }
+    else { cur=[it]; rows.push(cur); curY=it.y; }
+  }
+  return rows.map(r=>{
+    r.sort((a,b)=>a.x-b.x);
+    return r.map(it=>({t:it.str, x:it.x, xe:it.x+it.w, c:it.x+it.w/2, h:it.h||7}));
+  }).filter(r=>r.length);
+}
+
+/* assign one raw item to the column with max horizontal overlap (fallback: nearest centre) */
+function assignCol(it, cols){
+  let best=-1, bestOv=0;
+  for(let i=0;i<cols.length;i++){
+    const ov=Math.min(it.xe,cols[i].xe)-Math.max(it.x,cols[i].x);
+    if(ov>bestOv){bestOv=ov;best=i;}
+  }
+  if(best!==-1) return best;
+  let nd=Infinity, ni=0;
+  for(let i=0;i<cols.length;i++){ const d=Math.abs(it.c-cols[i].c); if(d<nd){nd=d;ni=i;} }
+  return ni;
+}
+
+/* Detect the column layout. Handles single-row headers (Brigade) AND vertically
+   stacked multi-row headers (MCA IEPF-1 e-forms) by collecting a header "band" of
+   rows just above the first data row and clustering their words by x into columns. */
+function detectColumns(rows){
+  // first data row = earliest row carrying a money (decimal) or date token
+  let fdi=-1;
+  for(let i=0;i<rows.length && i<60;i++){
+    const cells=rows[i].map(it=>it.t);
+    if(rows[i].length>=2 && (cells.some(hasDec) || cells.some(isDate))){ fdi=i; break; }
+  }
+  let band=null; let bandIdx=new Set();
+  if(fdi>0){
+    const lo=Math.max(0,fdi-8);
+    band=[];
+    for(let i=lo;i<fdi;i++){ if(rows[i].length>=3){ band.push(rows[i]); bandIdx.add(i); } }
+    if(!band.length) band=null;
+  }
+  if(!band){ // fallback: single row maximising distinct header categories
+    let hi=-1,hsc=1;
+    for(let i=0;i<rows.length;i++){
+      const cats=new Set();
+      for(const it of rows[i]) for(const k in HEADER_KW){ if(HEADER_KW[k].test(it.t)) cats.add(k); }
+      if(cats.size>hsc && rows[i].length>=3){ hsc=cats.size; hi=i; }
+    }
+    if(hi>=0){ band=[rows[hi]]; bandIdx=new Set([hi]); }
+  }
+  let cols;
+  if(band && band.length){
+    const items=[]; band.forEach(r=>r.forEach(it=>items.push(it)));
+    items.sort((a,b)=>a.x-b.x);
+    const hs=items.map(i=>i.h).sort((a,b)=>a-b); const mh=hs[Math.floor(hs.length/2)]||7;
+    const gap=Math.max(8, mh*1.4);
+    const cl=[];
+    for(const it of items){
+      const l=cl[cl.length-1];
+      if(l && it.x-l.xe<=gap){ l.xe=Math.max(l.xe,it.xe); l.words.push(it); }
+      else cl.push({x:it.x, xe:it.xe, words:[it]});
+    }
+    cols=cl.map(c=>{
+      const w=c.words.slice().sort((a,b)=> b.y-a.y || a.x-b.x).map(x=>x.t);
+      return {name:[...new Set(w)].join(' ').replace(/\s+/g,' ').trim(), x:c.x, xe:c.xe, c:(c.x+c.xe)/2};
+    });
+  }else{ // last resort: cluster every item's x
+    const xs=[]; rows.forEach(r=>r.forEach(it=>xs.push(it)));
+    xs.sort((a,b)=>a.x-b.x);
+    const cl=[];
+    for(const it of xs){ const l=cl[cl.length-1]; if(l && it.x-l.xe<18) l.xe=Math.max(l.xe,it.xe); else cl.push({x:it.x,xe:it.xe}); }
+    cols=cl.map((c,i)=>({name:'Column '+(i+1), x:c.x, xe:c.xe, c:(c.x+c.xe)/2}));
+  }
+  return {cols, bandIdx};
+}
+
+/* text-mode table: reconstruct each visual line and parse it with lineParse.
+   Works for fixed-width / dot-matrix reports and as a fallback when geometry finds nothing. */
+function buildTableText(parsed){
+  let rows=[];
+  for(const pg of parsed.pages){ rows=rows.concat(groupRows(pg.items)); }
+  const matrix=[];
+  for(const r of rows){
+    const p=lineParse(r.map(it=>it.t).join(' '));
+    if(p) matrix.push([p.name, p.folio, p.pincode||'', p.shares!=null?String(p.shares):'', p.amount!=null?p.amount.toFixed(2):'']);
+  }
+  return {colNames:['Name','Folio / DP-Client ID','Pincode','No. of Shares','Amount (Rs.)'], matrix, textMode:true};
+}
+
+/* build a column-aligned matrix for one file; returns {colNames,matrix} */
+function buildTable(parsed){
+  let rows=[];
+  for(const pg of parsed.pages){ rows=rows.concat(groupRows(pg.items)); }
+  if(!rows.length) return {colNames:[],matrix:[]};
+  const {cols, bandIdx}=detectColumns(rows);
+  // No usable column geometry (fixed-width / dot-matrix report where each line is one text run)
+  // -> fall back to text parsing of each whole line.
+  if(cols.length<3){
+    const alt=buildTableText(parsed);
+    if(alt.matrix.length) return alt;
+  }
+  const colNames=cols.map(c=>c.name);
+  const matrix=[];
+  for(let i=0;i<rows.length;i++){
+    if(bandIdx.has(i)) continue;
+    const cells=new Array(cols.length).fill('');
+    for(const it of rows[i]){ const ci=assignCol(it,cols); cells[ci]=(cells[ci]?cells[ci]+' ':'')+it.t; }
+    if(cells.some(c=>c.trim())) matrix.push(cells.map(c=>c.trim()));
+  }
+  return {colNames, matrix};
+}
+
+/* per-column statistics used by auto-detection */
+function colStats(colNames, matrix){
+  const nc=colNames.length; const st=[];
+  for(let c=0;c<nc;c++){
+    let n=0,dec=0,al=0,tot=0,ls=0;
+    for(const r of matrix){
+      const v=(r[c]||'').trim(); if(!v) continue; tot++; ls+=v.length;
+      if(parseAmt(v)!=null){ n++; if(hasDec(v)) dec++; }
+      if(/[a-z][a-z ]*[a-z]/i.test(v)) al++;
+    }
+    st.push({tot,n,dec,al,avg: tot?ls/tot:0});
+  }
+  return st;
+}
+
+/* choose amount / name / folio columns */
+function autoDetect(colNames, matrix){
+  const nc=colNames.length; const st=colStats(colNames, matrix);
+  // amount: trust a column whose HEADER names it; else fall back to a decimal-dominant numeric column
+  const pri=[/unpaid|unclaimed/i,/amount\s*due|due\s*amount/i,/dividend\s*amount|net\s*(div|amount)/i,/\bamount\b|\bamt\b|dividend/i,/\bvalue\b|\bsum\b/i];
+  let amountCol=-1;
+  for(const re of pri){
+    let cand=-1,cs=-1;
+    for(let c=0;c<nc;c++){
+      if(/share|nominal|\bqty\b|number of shar/i.test(colNames[c])) continue;
+      if(re.test(colNames[c]) && st[c].n>cs){ cs=st[c].n; cand=c; }
+    }
+    if(cand!==-1 && cs>0){ amountCol=cand; break; }
+  }
+  if(amountCol===-1){
+    let best=-1,bs=-1;
+    for(let c=0;c<nc;c++){
+      const s=st[c]; if(!s.tot) continue;
+      if(/date|\bshares\b|nominal|\bqty\b|\bpin\b|pincode|folio|client|dpid/i.test(colNames[c])) continue;
+      // require paise: real dividend columns carry decimals; folios/serials/share-counts do not
+      if(s.dec < s.tot*0.3) continue;
+      const score=(s.n/s.tot)*100 + (s.dec/Math.max(s.tot,1))*60 + c*0.6;
+      if(s.n>=Math.max(2,s.tot*0.4) && score>bs){ bs=score; best=c; }
+    }
+    amountCol=best;
+  }
+  // name: header-named (excluding address/relation/company), else best alphabetic column
+  let nameCols=[]; const nh=[];
+  for(let c=0;c<nc;c++){
+    if(HEADER_KW.name.test(colNames[c]) && !HEADER_KW.addr.test(colNames[c]) && !/father|husband|nominee|joint|company/i.test(colNames[c])) nh.push(c);
+  }
+  if(nh.length){ nameCols=nh; }
+  else{
+    let best=-1,bs=-1;
+    for(let c=0;c<nc;c++){
+      if(c===amountCol) continue; const s=st[c]; if(!s.tot) continue;
+      if(/\bpin\b|pincode|folio|client|dpid|demat|date|share/i.test(colNames[c])) continue;
+      const score=(s.al/s.tot)*100 + s.avg - c*1.2;
+      if(s.al>=s.tot*0.5 && score>bs){ bs=score; best=c; }
+    }
+    if(best!==-1) nameCols=[best];
+  }
+  // folio
+  let folioCol=-1;
+  for(let c=0;c<nc;c++){ if(/folio|client|dpid|demat|\bdp\b/i.test(colNames[c])){ folioCol=c; break; } }
+  // shares (a count column, never the amount column)
+  let sharesCol=-1;
+  for(let c=0;c<nc;c++){ if(c!==amountCol && /shares|no\.?\s*of\s*shar|nominal|\bqty\b/i.test(colNames[c]) && !/amount|value/i.test(colNames[c])){ sharesCol=c; break; } }
+  // pincode (dedicated column), and the address-ish columns to dig a PIN out of otherwise
+  let pinCol=-1;
+  for(let c=0;c<nc;c++){ if(/\bpin\b|pincode|pin\s*code|postal/i.test(colNames[c])){ pinCol=c; break; } }
+  const addrCols=[];
+  for(let c=0;c<nc;c++){ if(/address|place|city|state|district|location/i.test(colNames[c])) addrCols.push(c); }
+  return {amountCol, nameCols, folioCol, sharesCol, pinCol, addrCols};
+}
+
+/* derive records for a file from its matrix + chosen columns */
+function deriveRecords(file){
+  const {matrix}=file; const {amountCol,nameCols,folioCol,sharesCol,pinCol,addrCols}=file.map;
+  const recs=[];
+  const hasAmt=(amountCol!=null&&amountCol>=0), hasShares=(sharesCol!=null&&sharesCol>=0);
+  if(!hasAmt && !hasShares) return recs;                            // nothing rankable
+  for(const row of matrix){
+    const amount=hasAmt?parseAmt(row[amountCol]):null;
+    let shares=hasShares?parseShares(row[sharesCol]):null;
+    // recover shares when the count merged into the amount cell, e.g. "19 19.00" -> shares 19, amount 19.00
+    if(hasShares && (shares==null||shares<=0) && hasAmt){
+      const at=String(row[amountCol]||'').trim().split(/\s+/);
+      if(at.length>=2 && /^\d[\d,]*$/.test(at[0]) && /\.\d/.test(at[at.length-1])) shares=parseShares(at[0]);
+    }
+    if((amount==null||amount<=0) && (shares==null||shares<=0)) continue;  // need money or shares
+    let name=cleanName((nameCols&&nameCols.length)?nameCols.map(c=>row[c]||'').join(' '):'');
+    if(!name || !/[a-z]/i.test(name)) continue;                    // drop rows with no real name
+    if(isTotalRow(name)) continue;                                 // drop total / carry-forward rows
+    const folio=(folioCol!=null&&folioCol>=0)?(row[folioCol]||'').trim():'';
+    let pincode='';
+    if(pinCol!=null&&pinCol>=0) pincode=findPin(row[pinCol]);
+    if(!pincode && addrCols && addrCols.length){ for(const c of addrCols){ pincode=findPin(row[c]); if(pincode) break; } }
+    recs.push({name, amount:amount||0, shares:shares||0, folio, pincode});
+  }
+  return recs;
+}
+
+/* ============================================================
+   FILE HANDLING
+============================================================ */
+async function addFiles(fileList){
+  for(const f of fileList){
+    if(!/\.pdf$/i.test(f.name)) continue;
+    const id=++state.fileSeq;
+    const entry={id, name:f.name, status:'busy', records:[], matrix:[], colNames:[], map:{}, note:''};
+    state.files.push(entry); renderFiles();
+    try{
+      const buf=await f.arrayBuffer();
+      const parsed=await parsePdf(buf, (p,total)=>{
+        entry.note='Reading… page '+p+' / '+total; renderFiles();
+      });
+      if(parsed.emptyPages===parsed.numPages){
+        entry.status='warn'; entry.note='No selectable text — looks scanned (needs OCR)';
+        renderFiles(); continue;
+      }
+      const tbl=buildTable(parsed);
+      entry.colNames=tbl.colNames; entry.matrix=tbl.matrix;
+      const det=autoDetect(tbl.colNames, tbl.matrix);
+      entry.map={...det};
+      entry.records=deriveRecords(entry);
+      if(!entry.records.length && !tbl.textMode){           // geometry found nothing -> try text parsing
+        const alt=buildTableText(parsed);
+        if(alt.matrix.length){
+          const altMap=autoDetect(alt.colNames, alt.matrix);
+          const altRecs=deriveRecords({matrix:alt.matrix, map:altMap});
+          if(altRecs.length){ entry.colNames=alt.colNames; entry.matrix=alt.matrix; entry.map=altMap; entry.records=altRecs; }
+        }
+      }
+      if(!entry.records.length){
+        entry.status='warn';
+        entry.note='Parsed '+tbl.matrix.length+' rows but found no amount/shares — set columns below';
+      }else{
+        entry.status='ok';
+        entry.note=entry.records.length+' holders';
+        if(parsed.emptyPages>0) entry.note+=' · '+parsed.emptyPages+' scanned page(s) skipped';
+      }
+    }catch(err){
+      entry.status='err'; entry.note=(err&&err.message)||'Failed to read';
+    }
+    renderFiles(); recompute();
+  }
+  recompute();
+}
+
+function removeFile(id){
+  state.files=state.files.filter(f=>f.id!==id);
+  renderFiles(); recompute();
+}
+
+/* ============================================================
+   AGGREGATION + FILTER + SORT
+============================================================ */
+function getRows(){
+  let rows=[];
+  for(const f of state.files){
+    if(f.status==='err'||f.status==='busy') continue;
+    for(const r of f.records) rows.push({...r, file:f.name});
+  }
+  if(state.aggregate){
+    const map=new Map();
+    for(const r of rows){
+      const k2= r.name.toLowerCase(); // aggregate purely by name
+      if(!map.has(k2)) map.set(k2,{name:r.name, amount:0, shares:0, folio:r.folio||'', pincode:r.pincode||'', file:r.file, count:0, files:new Set()});
+      const e=map.get(k2); e.amount+=(r.amount||0); e.shares+=(r.shares||0); e.count++; e.files.add(r.file);
+      if(!e.folio && r.folio) e.folio=r.folio;
+      if(!e.pincode && r.pincode) e.pincode=r.pincode;
+    }
+    rows=[...map.values()].map(e=>({name:e.name, amount:e.amount, shares:e.shares, folio:e.folio, pincode:e.pincode,
+      file: e.files.size>1?e.files.size+' files':e.file, count:e.count}));
+  }
+  // filter
+  const q=state.search.toLowerCase().trim();
+  if(q) rows=rows.filter(r=>r.name.toLowerCase().includes(q)||(r.folio||'').toLowerCase().includes(q)||(r.pincode||'').includes(q));
+  if(state.minAmt>0) rows=rows.filter(r=>r.amount>=state.minAmt);
+  // sort
+  const k=state.sortKey, dir=state.sortDir==='asc'?1:-1;
+  rows.sort((a,b)=>{
+    let av=a[k], bv=b[k];
+    if(k==='amount'||k==='shares'){ return ((av||0)-(bv||0))*dir; }
+    av=(av||'').toString().toLowerCase(); bv=(bv||'').toString().toLowerCase();
+    return av<bv?-1*dir:av>bv?1*dir:0;
+  });
+  return rows;
+}
+
+/* ============================================================
+   RENDER
+============================================================ */
+function fmtINR(n){return '₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function renderFiles(){
+  const el=document.getElementById('fileList');
+  el.innerHTML=state.files.map(f=>{
+    const badge=f.status==='busy'?'<span class="badge b-busy">Reading…</span>'
+      :f.status==='ok'?'<span class="badge b-ok">'+esc(f.note)+'</span>'
+      :f.status==='warn'?'<span class="badge b-warn">'+esc(f.note)+'</span>'
+      :'<span class="badge b-err">'+esc(f.note)+'</span>';
+    return '<div class="file"><span>📄</span><span class="nm" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'
+      +badge+'<button class="x" onclick="removeFile('+f.id+')" title="Remove">✕</button></div>';
+  }).join('');
+}
+
+let _rows=[];
+function recompute(){
+  // when the data carries shares but no rupee amounts (e.g. share-transfer lists), rank by shares
+  let totAmt=0, totSh=0;
+  for(const f of state.files){ if(f.status==='ok'||f.status==='warn') for(const r of f.records){ totAmt+=r.amount||0; totSh+=r.shares||0; } }
+  if(!state.userSorted){ state.sortKey=(totAmt<=0 && totSh>0)?'shares':'amount'; state.sortDir='desc'; }
+  _rows=getRows();
+  const anyDone=state.files.some(f=>f.status==='ok'||f.status==='warn');
+  document.getElementById('results').style.display=anyDone?'block':'none';
+  if(!anyDone){return;}
+  renderCards(_rows, totAmt, totSh);
+  renderTable(_rows);
+  renderMapping();
+}
+
+function activeColumns(){
+  const hasPin=_rows.some(r=>r.pincode);
+  const hasSh=_rows.some(r=>r.shares>0);
+  const hasAmt=_rows.some(r=>r.amount>0);
+  const cols=[{key:'name',label:'Holder Name'},{key:'folio',label:'Folio / DP-Client ID'}];
+  if(hasPin) cols.push({key:'pincode',label:'Pincode'});
+  if(hasSh)  cols.push({key:'shares',label:'Shares',num:true});
+  cols.push({key:'file',label:'Source',sub:true});
+  if(hasAmt) cols.push({key:'amount',label:'Amount (₹)',num:true});
+  return cols;
+}
+
+function renderCards(rows, totAmt, totSh){
+  const top=rows.length?rows[0]:null;
+  const nFiles=state.files.filter(f=>f.status==='ok'||f.status==='warn').length;
+  const valCard = totAmt>0
+    ? {lbl:'Total unclaimed value', val:fmtINR(totAmt)}
+    : {lbl:'Total shares', val: totSh.toLocaleString('en-IN')};
+  const topSub = top ? (state.sortKey==='shares' ? top.shares.toLocaleString('en-IN')+' shares' : fmtINR(top.amount)) : '';
+  const cards=[
+    valCard,
+    {lbl: state.aggregate?'Unique holders':'Total line items', val: rows.length.toLocaleString('en-IN')},
+    {lbl: (totAmt>0 && totSh>0)?'Total shares':'Files analysed', val: (totAmt>0 && totSh>0)?totSh.toLocaleString('en-IN'):nFiles},
+    {lbl:'Highest holder', val: top?esc(top.name):'—', small:true, sub: topSub}
+  ];
+  document.getElementById('cards').innerHTML=cards.map(c=>
+    '<div class="card"><div class="lbl">'+c.lbl+'</div><div class="val'+(c.small?' small':'')+'">'+c.val+'</div>'
+    +(c.sub?'<div class="lbl" style="margin-top:3px;color:var(--pos);font-weight:600;">'+c.sub+'</div>':'')+'</div>'
+  ).join('');
+}
+
+function fmtCell(r, key){
+  if(key==='name'){ const cnt=(state.aggregate&&r.count>1)?'<div class="sub-cell">'+r.count+' entries combined</div>':''; return '<td class="nm-cell">'+esc(r.name)+cnt+'</td>'; }
+  if(key==='folio')  return '<td>'+esc(r.folio||'—')+'</td>';
+  if(key==='pincode')return '<td>'+esc(r.pincode||'—')+'</td>';
+  if(key==='shares') return '<td class="num">'+(r.shares>0?r.shares.toLocaleString('en-IN'):'—')+'</td>';
+  if(key==='file')   return '<td class="sub-cell">'+esc(r.file)+'</td>';
+  if(key==='amount') return '<td class="num">'+(r.amount>0?fmtINR(r.amount):'—')+'</td>';
+  return '<td></td>';
+}
+
+const RENDER_CAP=1000;  // keep the DOM light; full data is still summarised & exported
+function renderTable(rows){
+  const cols=activeColumns();
+  // header
+  const thead=document.getElementById('thead');
+  thead.innerHTML='<tr><th class="rank">#</th>'+cols.map(c=>{
+    const arrow=(c.key===state.sortKey)?(state.sortDir==='desc'?'▼':'▲'):'';
+    return '<th data-key="'+c.key+'"'+(c.num?' class="num"':'')+'>'+esc(c.label)+' <span class="arrow">'+arrow+'</span></th>';
+  }).join('')+'</tr>';
+  thead.querySelectorAll('th[data-key]').forEach(th=>{ th.onclick=()=>sortBy(th.dataset.key); });
+  // body
+  const tb=document.getElementById('tbody');
+  const empty=document.getElementById('emptyState');
+  let show=rows;
+  if(state.topN>0) show=rows.slice(0,state.topN);
+  let capped=false;
+  if(show.length>RENDER_CAP){ show=show.slice(0,RENDER_CAP); capped=true; }
+  document.getElementById('countline').textContent=
+    rows.length?('Showing '+show.length.toLocaleString('en-IN')+' of '+rows.length.toLocaleString('en-IN')+(state.aggregate?' unique holders':' rows')
+      +(capped?' · table capped at '+RENDER_CAP.toLocaleString('en-IN')+' — use Top N / search, or export for the full list':'')):'';
+  if(!show.length){tb.innerHTML='';empty.style.display='block';document.getElementById('tbl').style.display='none';return;}
+  empty.style.display='none';document.getElementById('tbl').style.display='table';
+  tb.innerHTML=show.map((r,i)=>
+    '<tr'+(i===0&&state.sortDir==='desc'?' class="top1"':'')+'><td class="rank">'+(i+1)+'</td>'+cols.map(c=>fmtCell(r,c.key)).join('')+'</tr>'
+  ).join('');
+}
+
+function sortBy(k){
+  if(state.sortKey===k) state.sortDir=state.sortDir==='asc'?'desc':'asc';
+  else { state.sortKey=k; state.sortDir=(k==='amount'||k==='shares')?'desc':'asc'; }
+  state.userSorted=true;
+  recompute();
+}
+
+function renderMapping(){
+  const wrap=document.getElementById('mapRows');
+  const files=state.files.filter(f=>f.colNames&&f.colNames.length);
+  document.getElementById('mappingWrap').style.display=files.length?'block':'none';
+  wrap.innerHTML=files.map(f=>{
+    const opts=(sel,allowNone)=>{
+      let o=allowNone?'<option value="-1"'+(sel<0||sel==null?' selected':'')+'>— none —</option>':'';
+      f.colNames.forEach((cn,i)=>{
+        const sample=(f.matrix.find(r=>r[i]&&r[i].trim())||[])[i]||'';
+        o+='<option value="'+i+'"'+(sel===i?' selected':'')+'>'+esc((cn||('Col '+(i+1)))+(sample?'  ·  e.g. '+sample.slice(0,18):''))+'</option>';
+      });
+      return o;
+    };
+    const nameSel=(f.map.nameCols&&f.map.nameCols.length)?f.map.nameCols[0]:-1;
+    return '<div class="maprow"><div class="fnm">📄 '+esc(f.name)+'</div>'
+      +'<label>Name column<select data-f="'+f.id+'" data-role="name">'+opts(nameSel,false)+'</select></label>'
+      +'<label>Amount column<select data-f="'+f.id+'" data-role="amount">'+opts(f.map.amountCol,true)+'</select></label>'
+      +'<label>Shares column (optional)<select data-f="'+f.id+'" data-role="shares">'+opts(f.map.sharesCol,true)+'</select></label>'
+      +'<label>Folio column (optional)<select data-f="'+f.id+'" data-role="folio">'+opts(f.map.folioCol,true)+'</select></label>'
+      +'<label>Pincode column (optional)<select data-f="'+f.id+'" data-role="pin">'+opts(f.map.pinCol,true)+'</select></label>'
+      +'</div>';
+  }).join('');
+  wrap.querySelectorAll('select').forEach(sel=>{
+    sel.onchange=()=>{
+      const f=state.files.find(x=>x.id==sel.dataset.f); if(!f) return;
+      const v=parseInt(sel.value,10);
+      const role=sel.dataset.role;
+      if(role==='name') f.map.nameCols=[v];
+      else if(role==='amount') f.map.amountCol=v;
+      else if(role==='shares') f.map.sharesCol=v;
+      else if(role==='pin') f.map.pinCol=v;
+      else f.map.folioCol=v;
+      f.records=deriveRecords(f);
+      f.status= f.records.length?'ok':'warn';
+      f.note= f.records.length?f.records.length+' holders':'No rows — adjust the columns';
+      renderFiles(); recompute();
+    };
+  });
+}
+
+/* ============================================================
+   EXPORT
+============================================================ */
+function exportRows(){
+  let rows=_rows.slice();
+  if(state.topN>0) rows=rows.slice(0,state.topN);
+  return rows;
+}
+function download(filename, content, type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function stamp(){const d=new Date();return d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);}
+
+// shape export rows according to which columns carry data
+function exportSpec(){
+  const rows=exportRows();
+  const hasPin=rows.some(r=>r.pincode), hasSh=rows.some(r=>r.shares>0), hasAmt=rows.some(r=>r.amount>0);
+  const head=['Rank','Holder Name','Folio / DP-Client ID'];
+  if(hasPin) head.push('Pincode');
+  if(hasSh)  head.push('No. of Shares');
+  head.push('Source');
+  if(hasAmt) head.push('Amount (INR)');
+  const cells=(r,i)=>{ const a=[i+1, r.name, r.folio||'']; if(hasPin)a.push(r.pincode||''); if(hasSh)a.push(r.shares||0); a.push(r.file); if(hasAmt)a.push((r.amount||0).toFixed(2)); return a; };
+  return {rows, head, cells, hasPin, hasSh, hasAmt};
+}
+document.getElementById('csvBtn').onclick=()=>{
+  const {rows,head,cells}=exportSpec();
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  let csv=head.map(q).join(',')+'\r\n';
+  rows.forEach((r,i)=>{csv+=cells(r,i).map(q).join(',')+'\r\n';});
+  download('iepf_holders_'+stamp()+'.csv','﻿'+csv,'text/csv;charset=utf-8');
+};
+document.getElementById('xlsBtn').onclick=()=>{
+  const {rows,head,cells,hasSh,hasAmt}=exportSpec();
+  const totAmt=rows.reduce((s,r)=>s+(r.amount||0),0), totSh=rows.reduce((s,r)=>s+(r.shares||0),0);
+  let t='<table border="1"><tr>'+head.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>';
+  rows.forEach((r,i)=>{ t+='<tr>'+cells(r,i).map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>'; });
+  // TOTAL row aligned to the columns present
+  const tot=head.map(h=> h==='Holder Name'?'<b>TOTAL</b>' : h==='No. of Shares'?'<b>'+totSh+'</b>' : h==='Amount (INR)'?'<b>'+totAmt.toFixed(2)+'</b>' : '');
+  t+='<tr>'+tot.map(v=>'<td>'+v+'</td>').join('')+'</tr></table>';
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+    +'<x:Name>IEPF Holders</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
+    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'+t+'</body></html>';
+  download('iepf_holders_'+stamp()+'.xls',html,'application/vnd.ms-excel');
+};
+document.getElementById('copyBtn').onclick=async()=>{
+  const {rows,head,cells}=exportSpec();
+  let txt=head.join('\t')+'\n';
+  rows.forEach((r,i)=>{txt+=cells(r,i).join('\t')+'\n';});
+  try{await navigator.clipboard.writeText(txt);const b=document.getElementById('copyBtn');const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>b.textContent=o,1400);}
+  catch(e){alert('Copy failed — your browser blocked clipboard access.');}
+};
+
+/* ============================================================
+   UI WIRING
+============================================================ */
+const drop=document.getElementById('drop'), fileInput=document.getElementById('fileInput');
+drop.onclick=()=>fileInput.click();
+fileInput.onchange=e=>{addFiles(e.target.files);fileInput.value='';};
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{if(e.dataTransfer.files.length)addFiles(e.dataTransfer.files);});
+
+let _searchTimer=null;
+document.getElementById('search').oninput=e=>{state.search=e.target.value;clearTimeout(_searchTimer);_searchTimer=setTimeout(recompute,160);};
+document.getElementById('minAmt').oninput=e=>{state.minAmt=parseFloat(e.target.value)||0;recompute();};
+document.getElementById('topN').onchange=e=>{state.topN=parseInt(e.target.value,10)||0;recompute();};
+document.getElementById('aggToggle').onchange=e=>{state.aggregate=e.target.checked;recompute();};
+/* table header sort handlers are attached dynamically in renderTable() */
+</script>
+</body>
+</html>

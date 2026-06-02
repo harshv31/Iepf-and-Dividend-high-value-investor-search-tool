@@ -1,0 +1,25 @@
+{
+  "name": "iepf-analyzer",
+  "version": "1.1.0",
+  "description": "Offline, single-file tool to extract and rank the highest-value holders from IEPF / unclaimed-dividend PDFs.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "files": [
+    "IEPF_Analyzer.html",
+    "src/",
+    "build.mjs",
+    "build.ps1"
+  ],
+  "keywords": [
+    "iepf",
+    "unclaimed-dividend",
+    "pdf",
+    "offline",
+    "shareholders",
+    "india",
+    "mca"
+  ]
+}
